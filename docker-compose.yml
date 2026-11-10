@@ -5,8 +5,10 @@ services:
       - "8000:8000"
     environment:
       ENVIRONMENT: ${ENVIRONMENT:-local}
-      DATABASE_URL: postgresql://${POSTGRES_USER:-opspilot}:${POSTGRES_PASSWORD:-opspilot}@postgres:5432/${POSTGRES_DB:-opspilot}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-opspilot}:${POSTGRES_PASSWORD:-opspilot}@postgres:5432/${POSTGRES_DB:-opspilot}
       REDIS_URL: redis://redis:6379/0
+      # Unset = /incidents endpoints return 503 (fail closed). Set it in .env.
+      API_TOKEN: ${API_TOKEN:-}
     depends_on:
       postgres:
         condition: service_healthy
