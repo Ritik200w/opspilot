@@ -86,5 +86,9 @@ async def test_enqueue_analyses_splits_success_and_failure() -> None:
     assert queue.enqueued == [good]
 
 
-async def test_worker_stub_runs() -> None:
-    assert "would analyze abc" in await analyze_incident({}, "abc")
+async def test_worker_skips_missing_incident(
+    sessionmaker: async_sessionmaker[AsyncSession],
+) -> None:
+    ctx = {"sessionmaker": sessionmaker, "collectors": []}
+    result = await analyze_incident(ctx, str(uuid.uuid4()))
+    assert "not found" in result

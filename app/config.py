@@ -19,6 +19,19 @@ class Settings(BaseSettings):
     # Bearer token for the management API (/incidents, ...). Empty = API disabled (fail closed).
     api_token: SecretStr = SecretStr("")
 
+    # Context collectors (Prometheus metrics, Loki logs) queried during triage.
+    prometheus_url: str = "http://prometheus:9090"
+    loki_url: str = "http://loki:3100"
+    collector_timeout_seconds: float = 10.0
+    # Window around the incident to collect: lookback before it opened, and after.
+    collector_window_before_minutes: int = 15
+    collector_window_after_minutes: int = 5
+    collector_step_seconds: int = 15
+    # Caps so one noisy service can't blow up a snapshot (truncated flag is set when hit).
+    collector_max_metric_points: int = 500
+    collector_max_log_lines: int = 200
+    collector_max_log_bytes: int = 64_000
+
 
 @lru_cache
 def get_settings() -> Settings:
