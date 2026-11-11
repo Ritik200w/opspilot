@@ -30,7 +30,8 @@ build-backend = "setuptools.build_meta"
 include = ["app*"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests", "demo-app/tests"]
+pythonpath = ["demo-app"]
 addopts = "-ra"
 
 [tool.ruff]
@@ -42,4 +43,4 @@ extend-exclude = [".venv"]
 select = ["E", "F", "W", "I", "B", "UP", "ANN", "S"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101", "S105", "S106"]
+"**/tests/**" = ["S101", "S105", "S106"]

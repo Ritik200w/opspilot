@@ -1,0 +1,20 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
+
+rule_files:
+  - /etc/prometheus/alert_rules.yml
+
+scrape_configs:
+  - job_name: demo-app
+    static_configs:
+      - targets: ["demo-app:8000"]
+        labels:
+          # Must match the compose service name: Alloy labels Loki logs with the same
+          # `service` value, so OpsPilot can query metrics and logs with one key.
+          service: demo-app

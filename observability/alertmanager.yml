@@ -1,0 +1,20 @@
+route:
+  receiver: opspilot
+  # Matches OpsPilot's dedup: one incident per (alertname, service) group.
+  group_by: [alertname, service]
+  group_wait: 10s
+  group_interval: 1m
+  repeat_interval: 1h
+
+receivers:
+  - name: opspilot
+    webhook_configs:
+      - url: http://api:8000/webhooks/alertmanager
+        send_resolved: true
+        max_alerts: 0
+        http_config:
+          authorization:
+            type: Bearer
+            # Alertmanager does not expand env vars in its config. docker-compose turns the
+            # API_TOKEN env var into this secret file, so the token never lives in this repo.
+            credentials_file: /run/secrets/api_token

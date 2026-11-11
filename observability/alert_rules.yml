@@ -1,0 +1,17 @@
+groups:
+  - name: demo-app
+    rules:
+      - alert: HighErrorRate
+        # Share of 5xx responses over the last minute, per service.
+        expr: |
+          sum by (service) (rate(http_requests_total{status=~"5.."}[1m]))
+            /
+          sum by (service) (rate(http_requests_total[1m]))
+            > 0.05
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          # Keep `summary` free of changing values: OpsPilot uses it as the incident title.
+          summary: "{{ $labels.service }} 5xx error rate above 5%"
+          description: "{{ $labels.service }} returned 5xx for {{ $value | humanizePercentage }} of requests over the last minute."
