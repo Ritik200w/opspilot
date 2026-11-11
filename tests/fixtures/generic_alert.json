@@ -1,0 +1,8 @@
+{
+  "title": "Order API latency above 2s",
+  "service": "orders",
+  "severity": "warning",
+  "description": "p95 latency on /orders is 2.4s for 5 minutes",
+  "labels": {"env": "local", "team": "payments"},
+  "starts_at": "2026-11-10T12:00:00Z"
+}

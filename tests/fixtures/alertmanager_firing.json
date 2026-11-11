@@ -1,0 +1,31 @@
+{
+  "version": "4",
+  "groupKey": "{}:{alertname=\"HighErrorRate\", service=\"checkout\"}",
+  "truncatedAlerts": 0,
+  "status": "firing",
+  "receiver": "opspilot",
+  "groupLabels": {"alertname": "HighErrorRate", "service": "checkout"},
+  "commonLabels": {"alertname": "HighErrorRate", "service": "checkout", "severity": "critical", "job": "checkout"},
+  "commonAnnotations": {"summary": "Checkout 5xx rate above 5%"},
+  "externalURL": "http://alertmanager:9093",
+  "alerts": [
+    {
+      "status": "firing",
+      "labels": {"alertname": "HighErrorRate", "service": "checkout", "severity": "critical", "job": "checkout", "instance": "checkout-1:8000"},
+      "annotations": {"summary": "Checkout 5xx rate above 5%", "description": "5xx ratio is 12% on checkout-1"},
+      "startsAt": "2026-11-10T12:00:00.000Z",
+      "endsAt": "0001-01-01T00:00:00Z",
+      "generatorURL": "http://prometheus:9090/graph?g0.expr=...",
+      "fingerprint": "a1b2c3d4e5f60001"
+    },
+    {
+      "status": "firing",
+      "labels": {"alertname": "HighErrorRate", "service": "checkout", "severity": "critical", "job": "checkout", "instance": "checkout-2:8000"},
+      "annotations": {"summary": "Checkout 5xx rate above 5%", "description": "5xx ratio is 9% on checkout-2"},
+      "startsAt": "2026-11-10T12:00:30.000Z",
+      "endsAt": "0001-01-01T00:00:00Z",
+      "generatorURL": "http://prometheus:9090/graph?g0.expr=...",
+      "fingerprint": "a1b2c3d4e5f60002"
+    }
+  ]
+}

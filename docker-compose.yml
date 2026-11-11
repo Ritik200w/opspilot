@@ -1,14 +1,16 @@
+x-app-env: &app-env
+  ENVIRONMENT: ${ENVIRONMENT:-local}
+  DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-opspilot}:${POSTGRES_PASSWORD:-opspilot}@postgres:5432/${POSTGRES_DB:-opspilot}
+  REDIS_URL: redis://redis:6379/0
+  # Unset = /incidents and /webhooks return 503 (fail closed). Set it in .env.
+  API_TOKEN: ${API_TOKEN:-}
+
 services:
   api:
     build: .
     ports:
       - "8000:8000"
-    environment:
-      ENVIRONMENT: ${ENVIRONMENT:-local}
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-opspilot}:${POSTGRES_PASSWORD:-opspilot}@postgres:5432/${POSTGRES_DB:-opspilot}
-      REDIS_URL: redis://redis:6379/0
-      # Unset = /incidents endpoints return 503 (fail closed). Set it in .env.
-      API_TOKEN: ${API_TOKEN:-}
+    environment: *app-env
     depends_on:
       postgres:
         condition: service_healthy
@@ -19,6 +21,17 @@ services:
       interval: 10s
       timeout: 3s
       retries: 5
+
+  worker:
+    build: .
+    command: ["arq", "app.worker.WorkerSettings"]
+    environment: *app-env
+    depends_on:
+      # api runs the migrations at startup; wait for it so the worker sees the schema.
+      api:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
   postgres:
     image: postgres:16-alpine

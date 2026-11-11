@@ -7,6 +7,13 @@ class Severity(StrEnum):
     INFO = "info"
 
 
+SEVERITY_RANK: dict[Severity, int] = {Severity.INFO: 0, Severity.WARNING: 1, Severity.CRITICAL: 2}
+
+
+def is_more_severe(candidate: Severity, current: Severity) -> bool:
+    return SEVERITY_RANK[candidate] > SEVERITY_RANK[current]
+
+
 class IncidentStatus(StrEnum):
     OPEN = "open"
     ANALYZING = "analyzing"
