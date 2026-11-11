@@ -6,6 +6,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import IncidentStatus, Severity
+from tests.conftest import FakeQueue
 from tests.factories import T0, make_alert, make_analysis, make_fix, make_incident
 
 pytestmark = pytest.mark.anyio
@@ -123,3 +124,51 @@ async def test_detail_invalid_id(client: AsyncClient) -> None:
     response = await client.get("/incidents/not-a-uuid")
 
     assert response.status_code == 422
+
+
+# ------------------------------------------------------------------ reanalyze
+
+
+async def test_reanalyze_enqueues_and_returns_202(
+    client: AsyncClient, session: AsyncSession, queue: FakeQueue
+) -> None:
+    incident = make_incident()
+    session.add(incident)
+    await session.commit()
+
+    response = await client.post(f"/incidents/{incident.id}/reanalyze")
+
+    assert response.status_code == 202
+    body = response.json()
+    assert body == {"incident_id": str(incident.id), "status": "enqueued"}
+    assert queue.enqueued == [incident.id]
+
+
+async def test_reanalyze_unknown_incident_is_404(client: AsyncClient, queue: FakeQueue) -> None:
+    response = await client.post(f"/incidents/{uuid.uuid4()}/reanalyze")
+
+    assert response.status_code == 404
+    assert queue.enqueued == []  # nothing enqueued for a missing incident
+
+
+async def test_reanalyze_requires_auth(anon_client: AsyncClient, session: AsyncSession) -> None:
+    incident = make_incident()
+    session.add(incident)
+    await session.commit()
+
+    response = await anon_client.post(f"/incidents/{incident.id}/reanalyze")
+
+    assert response.status_code == 401
+
+
+async def test_reanalyze_returns_503_when_queue_down(
+    client: AsyncClient, session: AsyncSession, queue: FakeQueue
+) -> None:
+    incident = make_incident()
+    session.add(incident)
+    await session.commit()
+    queue.fail = True  # simulate Redis being unavailable
+
+    response = await client.post(f"/incidents/{incident.id}/reanalyze")
+
+    assert response.status_code == 503

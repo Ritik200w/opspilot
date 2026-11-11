@@ -32,6 +32,15 @@ class Settings(BaseSettings):
     collector_max_log_lines: int = 200
     collector_max_log_bytes: int = 64_000
 
+    # Claude triage (analysis step). Empty API key = triage disabled (calls fail, recorded).
+    anthropic_api_key: SecretStr = SecretStr("")
+    anthropic_model: str = "claude-sonnet-5-5"
+    anthropic_timeout_seconds: float = 30.0
+    anthropic_max_retries: int = 2  # retries after the first attempt, on rate-limit/5xx/timeout
+    anthropic_max_tokens: int = 4096  # output budget; too low truncates the JSON mid-string
+    # Hard cap on the context sent to Claude in one triage call (approximate tokens).
+    triage_max_input_tokens: int = 8_000
+
 
 @lru_cache
 def get_settings() -> Settings:

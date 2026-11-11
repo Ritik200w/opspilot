@@ -4,6 +4,9 @@ x-app-env: &app-env
   REDIS_URL: redis://redis:6379/0
   # Unset = /incidents and /webhooks return 503 (fail closed). Set it in .env.
   API_TOKEN: ${API_TOKEN:-}
+  # Claude triage. Unset key = triage calls fail and are recorded on the analysis.
+  ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+  ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-sonnet-5-5}
 
 # Containers with this label get their logs shipped to Loki by Alloy.
 x-ship-logs: &ship-logs

@@ -4,7 +4,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.api.deps import SessionDep, require_api_token
-from app.models import IncidentStatus, Severity
+from app.models import Incident, IncidentStatus, Severity
+from app.queue import JobQueue, get_queue
 from app.schemas.incident import (
     AlertOut,
     AnalysisOut,
@@ -12,6 +13,7 @@ from app.schemas.incident import (
     IncidentDetail,
     IncidentOut,
     IncidentPage,
+    ReanalyzeAccepted,
 )
 from app.services import incidents as incident_service
 from app.services.incidents import IncidentDetailData, IncidentFilters
@@ -19,6 +21,8 @@ from app.services.incidents import IncidentDetailData, IncidentFilters
 router = APIRouter(
     prefix="/incidents", tags=["incidents"], dependencies=[Depends(require_api_token)]
 )
+
+QueueDep = Annotated[JobQueue, Depends(get_queue)]
 
 
 @router.get("")
@@ -42,6 +46,21 @@ async def get_incident(incident_id: uuid.UUID, session: SessionDep) -> IncidentD
     if detail is None:
         raise HTTPException(status_code=404, detail="Incident not found")
     return _to_detail(detail)
+
+
+@router.post("/{incident_id}/reanalyze", status_code=202)
+async def reanalyze_incident(
+    incident_id: uuid.UUID, session: SessionDep, queue: QueueDep
+) -> ReanalyzeAccepted:
+    """Re-run triage for an existing incident by enqueuing the analysis job."""
+    incident = await session.get(Incident, incident_id)
+    if incident is None:
+        raise HTTPException(status_code=404, detail="Incident not found")
+    try:
+        await queue.enqueue_analysis(incident_id)
+    except Exception as exc:  # noqa: BLE001 - surface a queue outage as 503
+        raise HTTPException(status_code=503, detail="Failed to enqueue analysis") from exc
+    return ReanalyzeAccepted(incident_id=incident_id)
 
 
 def _to_detail(data: IncidentDetailData) -> IncidentDetail:

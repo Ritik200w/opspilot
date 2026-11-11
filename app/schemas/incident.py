@@ -85,3 +85,8 @@ class IncidentPage(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class ReanalyzeAccepted(BaseModel):
+    incident_id: uuid.UUID
+    status: str = "enqueued"

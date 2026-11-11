@@ -17,9 +17,11 @@ from app.collectors import (
     collect_context,
 )
 from app.collectors.base import CollectedContext
-from app.models import ContextKind, ContextSnapshot
+from app.llm import ClaudeClient
+from app.models import Analysis, ContextKind, ContextSnapshot
 from app.worker import analyze_incident
 from tests.factories import T0, make_incident
+from tests.fakes import VALID_TRIAGE_JSON, FakeAnthropic, FakeMessage
 
 pytestmark = pytest.mark.anyio
 
@@ -241,14 +243,27 @@ async def test_analyze_incident_collects_and_stores(
             return_value=Response(200, json=_streams([["1700000000000000000", "level=ERROR boom"]]))
         )
         async with httpx.AsyncClient() as client:
-            ctx = {"sessionmaker": sessionmaker, "http_client": client}
+            claude = ClaudeClient(
+                api_key="test-key",
+                model="claude-sonnet-5-5",
+                backoff_base_seconds=0.0,
+                client=FakeAnthropic([FakeMessage(VALID_TRIAGE_JSON)]),  # type: ignore[arg-type]
+            )
+            ctx = {
+                "sessionmaker": sessionmaker,
+                "http_client": client,
+                "claude_client": claude,
+            }
             result = await analyze_incident(ctx, str(incident_id))
 
-    assert "2 context snapshots" in result
+    assert "2 snapshots" in result
+    assert "analyzed" in result
     async with sessionmaker() as check:
         rows = (
             await check.scalars(
                 select(ContextSnapshot).where(ContextSnapshot.incident_id == incident_id)
             )
         ).all()
+        analysis = await check.scalar(select(Analysis).where(Analysis.incident_id == incident_id))
     assert {row.kind for row in rows} == {ContextKind.METRICS, ContextKind.LOGS}
+    assert analysis is not None and analysis.error is None

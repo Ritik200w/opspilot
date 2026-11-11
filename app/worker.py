@@ -17,8 +17,10 @@ from app.collectors import (
 )
 from app.config import Settings, get_settings
 from app.db import get_sessionmaker
+from app.llm import ClaudeClient
 from app.models import Incident
 from app.queue import redis_settings
+from app.services.analyze import analyze_incident_context
 
 logger = logging.getLogger(__name__)
 
@@ -51,11 +53,20 @@ def _collectors(ctx: dict[str, Any], settings: Settings) -> list[Collector]:
     return build_collectors(ctx["http_client"], settings)
 
 
+def _claude_client(ctx: dict[str, Any], settings: Settings) -> ClaudeClient:
+    # Tests inject a mocked client; the running worker builds one from settings.
+    injected = ctx.get("claude_client")
+    if injected is not None:
+        return injected
+    return ClaudeClient.from_settings(settings)
+
+
 async def analyze_incident(ctx: dict[str, Any], incident_id: str) -> str:
-    """Gather context (metrics + logs) for the incident, then analyze.
+    """Gather context (metrics + logs) for the incident, then run Claude triage.
 
     Step 4b: collectors run and their results are stored as context_snapshots.
-    Step 5 replaces the analysis stub below with Claude -> store -> Slack.
+    Step 5: Claude analyzes the incident; the run is stored in analyses and, on
+    success, a fix_proposal is created. (Slack posting is step 6.)
     """
     settings = get_settings()
     sessionmaker: async_sessionmaker[AsyncSession] = ctx.get("sessionmaker") or get_sessionmaker()
@@ -76,18 +87,25 @@ async def analyze_incident(ctx: dict[str, Any], incident_id: str) -> str:
         )
         await session.commit()
 
-    # Analysis stub. Step 5 replaces this with Claude -> store -> Slack.
+        outcome = await analyze_incident_context(
+            session, incident, _claude_client(ctx, settings), settings
+        )
+
     logger.info(
-        "analyze_incident (stub) for incident %s: collected %d context snapshots",
+        "analyze_incident for incident %s: %d context snapshots, analysis ok=%s",
         incident_id,
         len(snapshots),
+        outcome.ok,
     )
-    return f"stub: would analyze {incident_id} with {len(snapshots)} context snapshots"
+    status = "analyzed" if outcome.ok else f"failed ({outcome.error})"
+    return f"incident {incident_id}: {len(snapshots)} snapshots, triage {status}"
 
 
 async def on_startup(ctx: dict[str, Any]) -> None:
+    settings = get_settings()
     ctx["sessionmaker"] = get_sessionmaker()
-    ctx["http_client"] = httpx.AsyncClient(timeout=get_settings().collector_timeout_seconds)
+    ctx["http_client"] = httpx.AsyncClient(timeout=settings.collector_timeout_seconds)
+    ctx["claude_client"] = ClaudeClient.from_settings(settings)
 
 
 async def on_shutdown(ctx: dict[str, Any]) -> None:
